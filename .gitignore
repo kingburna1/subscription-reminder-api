@@ -18,9 +18,18 @@ lerna-debug.log*
 # OS
 .DS_Store
 
-# Tests
+# Tests, test configs, and test data
 /coverage
 /.nyc_output
+test/
+*.spec.ts
+*.test.ts
+*.e2e-spec.ts
+vitest.config.*
+vitest.workspace.*
+
+# Database migrations
+src/database/migrations/
 
 # IDEs and editors
 /.idea
