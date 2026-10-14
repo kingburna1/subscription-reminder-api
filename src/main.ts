@@ -3,12 +3,14 @@ import { ConfigService } from '@nestjs/config';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule, ObserveInstrument } from './app.module.js';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     instrument: ObserveInstrument,
   });
 
+  // Global Validation Pipe: whitelist unknown properties and transform payloads to DTO instances
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -16,19 +18,42 @@ async function bootstrap() {
     }),
   );
 
+  // Global HTTP Exception Filter: uniform JSON error responses
+  app.useGlobalFilters(new HttpExceptionFilter());
+
   const configService = app.get(ConfigService);
   const port = Number(configService.get<number>('PORT', 6500));
   const nodeEnv = configService.get<string>('NODE_ENV', 'local');
 
-  // Swagger OpenAPI documentation setup
+  // Swagger OpenAPI documentation setup mounted at /docs with JWT Bearer Auth enabled
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Subscription Reminder API')
-    .setDescription('API documentation for the Subscription Reminder Service')
+    .setDescription(
+      'Production-grade REST API documentation for Subscription Management, Next Billing Date Calculation, and Automated Payment Reminders.',
+    )
     .setVersion('1.0')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Enter your JWT token (without Bearer prefix)',
+        in: 'header',
+      },
+      'bearer',
+    )
     .build();
 
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+
+  // Mounted at /docs (primary) and /api/docs (alias)
+  SwaggerModule.setup('docs', app, swaggerDocument, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
+
   SwaggerModule.setup('api/docs', app, swaggerDocument, {
     swaggerOptions: {
       persistAuthorization: true,
@@ -37,6 +62,6 @@ async function bootstrap() {
 
   await app.listen(port);
   Logger.log(`Application is running in [${nodeEnv}] mode on port ${port}`, 'Bootstrap');
-  Logger.log(`Swagger documentation available at http://localhost:${port}/api/docs`, 'Bootstrap');
+  Logger.log(`Swagger documentation available at http://localhost:${port}/docs`, 'Bootstrap');
 }
 await bootstrap();
