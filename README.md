@@ -1,121 +1,384 @@
-# subscription-reminder-api
+# Subscription and Payment Reminder API
 
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+A production-grade REST API built with **NestJS**, **TypeScript**, and **PostgreSQL (TypeORM)** to manage recurring subscriptions, calculate upcoming renewal dates, import subscriptions via CSV, and dispatch automated payment reminders via scheduled daily cron jobs.
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+---
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Table of Contents
+1. [Technologies & Architecture](#technologies--architecture)
+2. [Project Setup & Installation](#project-setup--installation)
+3. [Environment Configuration](#environment-configuration)
+4. [API Documentation (Swagger UI)](#api-documentation-swagger-ui)
+5. [Part 1: Algorithmic Problems](#part-1-algorithmic-problems)
+6. [Part 2: Practical Exercises](#part-2-practical-exercises)
+   - [Exercise 1: Subscriptions CRUD & Next Billing Date](#exercise-1-subscriptions-crud--next-billing-date)
+   - [Exercise 2: Automated Payment Reminders & Cron Job](#exercise-2-automated-payment-reminders--cron-job)
+   - [Exercise 3: CSV Subscription Import](#exercise-3-csv-subscription-import)
+7. [Testing the Scheduled Cron Job (Immediate Execution)](#testing-the-scheduled-cron-job-immediate-execution)
+8. [Error Handling & Validation](#error-handling--validation)
+9. [Database & Deployment](#database--deployment)
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Technologies & Architecture
 
-## Project setup
+- **Runtime:** Node.js (v20+)
+- **Framework:** NestJS (v12)
+- **Language:** TypeScript (strict mode, ES modules)
+- **Database & ORM:** PostgreSQL, TypeORM
+- **Scheduling:** `@nestjs/schedule` (Cron jobs)
+- **Validation & Transformation:** `class-validator`, `class-transformer`
+- **Authentication:** Passport JWT (stateless bearer token)
+- **API Documentation:** OpenAPI / Swagger UI (protected by HTTP Basic Auth)
+- **Testing:** Vitest (unit & integration/E2E test suites)
 
-```bash
-$ pnpm install
+### Codebase Organization
+```
+src/
+├── algorithms/                 # Part 1: Algorithmic solutions, DTOs & controller
+│   ├── find-duplicates.ts
+│   ├── longest-substring.ts
+│   └── group-anagrams.ts
+├── common/                     # Cross-cutting concerns
+│   ├── decorators/             # @CurrentUser, @Public
+│   ├── filters/                # Global HttpExceptionFilter
+│   ├── guards/                 # JwtAuthGuard
+│   ├── interceptors/           # Response transform interceptor
+│   └── middleware/             # Swagger HTTP Basic Auth middleware
+├── config/                     # TypeORM & database configuration
+├── modules/
+│   ├── auth/                   # JWT Registration & Login
+│   ├── users/                  # User persistence & relations
+│   ├── subscriptions/          # Subscriptions CRUD, Next Billing Calculator, CSV Import
+│   │   ├── csv-parser.service.ts
+│   │   ├── dto/
+│   │   └── entities/
+│   ├── reminders/              # Daily Scheduler, Duplicate Prevention & History
+│   │   ├── reminders.scheduler.ts
+│   │   ├── reminders.service.ts
+│   │   └── entities/
+│   └── mail/                   # Notification & email delivery service
+├── app.module.ts
+└── main.ts
 ```
 
-## Compile and run the project
+---
 
+## Project Setup & Installation
+
+### 1. Clone the repository
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+git clone https://github.com/kingburna1/subscription-reminder-api.git
+cd subscription-reminder-api
 ```
 
-## Run tests
-
+### 2. Install dependencies
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm install
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+### 3. Build the application
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pnpm run build
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 4. Run the application
+```bash
+# Development watch mode
+pnpm run start:dev
 
-## Observability
+# Production mode
+pnpm run start:prod
+```
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+---
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+## Environment Configuration
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+Create a `.env` or `.env.development` file in the root directory (based on `.env.example`):
 
-This project is already instrumented. Create a free account at [observe.nestjs.com](https://observe.nestjs.com), add an application, and paste the generated app key and secret into the `ObserveModule.forRoot()` call in `src/app.module.ts`.
+```env
+# Application Port & Environment
+PORT=6500
+NODE_ENV=development
 
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+# Database Connection (PostgreSQL / Neon)
+DATABASE_URL=postgresql://user:password@hostname:5432/dbname?sslmode=require
 
-## Resources
+# JWT Authentication
+JWT_SECRET=super_secret_jwt_key_2026_change_in_production!
+JWT_EXPIRES_IN=7d
 
-Check out a few resources that may come in handy when working with NestJS:
+# Swagger UI Basic Auth Protection
+SWAGGER_USER=admin
+SWAGGER_PASSWORD=SecretSwaggerPass2026!
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# Email Service (Optional: logs to console if omitted)
+SMTP_HOST=smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=
+SMTP_PASS=
+MAIL_FROM="Subscription Reminder <no-reply@subscriptions.local>"
+```
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## API Documentation (Swagger UI)
 
-## Stay in touch
+Interactive OpenAPI documentation is mounted **exclusively** at `/api/docs` and protected with HTTP Basic Authentication.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- **URL:** [http://localhost:6500/api/docs](http://localhost:6500/api/docs)
+- **HTTP Basic Auth Username:** `admin`
+- **HTTP Basic Auth Password:** `SecretSwaggerPass2026!`
 
-## License
+*(Note: Requests to `/api` or `/docs` return `404 Not Found` to guarantee exclusive and secure access).*
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Authenticating in Swagger
+1. Open [http://localhost:6500/api/docs](http://localhost:6500/api/docs) and log in with the Basic Auth credentials.
+2. Call `POST /auth/register` or `POST /auth/login` to receive an `accessToken`.
+3. Click the green **Authorize** button at the top-right of Swagger UI and paste your JWT token.
 
+---
+
+## Part 1: Algorithmic Problems
+
+All three algorithmic problems are implemented as pure TypeScript functions and also exposed via public API endpoints:
+
+### 1. Find Duplicate Numbers
+- **Endpoint:** `POST /algorithms/find-duplicates`
+- **Time Complexity:** $O(n)$ single pass using hash sets.
+- **Space Complexity:** $O(n)$.
+- **Example Input:**
+  ```json
+  { "numbers": [1, 2, 3, 2, 4, 5, 1] }
+  ```
+- **Example Output:**
+  ```json
+  { "duplicates": [2, 1] }
+  ```
+
+### 2. Longest Substring Without Repeating Characters
+- **Endpoint:** `POST /algorithms/longest-substring`
+- **Time Complexity:** $O(n)$ optimal sliding window with character index lookup.
+- **Space Complexity:** $O(\min(n, m))$ where $m$ is alphabet size.
+- **Example Input:**
+  ```json
+  { "text": "abcabcbb" }
+  ```
+- **Example Output:**
+  ```json
+  { "input": "abcabcbb", "length": 3 }
+  ```
+
+### 3. Group Anagrams
+- **Endpoint:** `POST /algorithms/group-anagrams`
+- **Time Complexity:** $O(n \cdot k \log k)$ where $k$ is maximum word length.
+- **Space Complexity:** $O(n \cdot k)$.
+- **Example Input:**
+  ```json
+  { "words": ["eat", "tea", "tan", "ate", "nat", "bat"] }
+  ```
+- **Example Output:**
+  ```json
+  {
+    "groups": [
+      ["eat", "tea", "ate"],
+      ["tan", "nat"],
+      ["bat"]
+    ]
+  }
+  ```
+
+---
+
+## Part 2: Practical Exercises
+
+### Exercise 1: Subscriptions CRUD & Next Billing Date
+
+Allows users to manage subscriptions and automatically calculates the next upcoming renewal date.
+
+#### Subscription Entity Schema
+- `id` (UUID, Primary Key)
+- `name` (String, max 255)
+- `amount` (Decimal, precision 10, scale 2, > 0)
+- `billingDate` (Date, original start date)
+- `billingCycle` (`MONTHLY` or `YEARLY`)
+- `status` (`ACTIVE` or `CANCELLED`)
+- `userId` (UUID, Foreign Key)
+- `createdAt` & `updatedAt` (Timestamps)
+- `nextBillingDate` (Dynamically calculated ISO date string)
+
+#### Endpoints
+- `POST /subscriptions`: Create a new subscription.
+- `GET /subscriptions`: List subscriptions for authenticated user.
+- `GET /subscriptions?status=ACTIVE`: Filter subscriptions by status (`ACTIVE` or `CANCELLED`).
+- `GET /subscriptions/:id`: Retrieve single subscription (enforces user ownership).
+- `PATCH /subscriptions/:id`: Update subscription (enforces user ownership).
+- `DELETE /subscriptions/:id`: Delete subscription (enforces user ownership).
+
+#### Next Billing Date Calculation Algorithm
+The calculator (`SubscriptionsService.calculateNextBillingDate`) dynamically advances forward month-by-month or year-by-year from the baseline `billingDate` until the next upcoming renewal date on or after the reference date (today). It handles calendar edge cases such as varying month lengths (e.g. Jan 31 &rarr; Feb 28) and leap years.
+
+---
+
+### Exercise 2: Automated Payment Reminders & Cron Job
+
+Automatically scans active subscriptions and notifies owners before renewal.
+
+#### Features
+- **Scheduled Daily Task:** Configured with `@nestjs/schedule` using `@Cron(CronExpression.EVERY_DAY_AT_9AM)`.
+- **Lookahead Window:** Identifies active subscriptions whose `nextBillingDate` falls within the next three days ($today \le nextBillingDate \le today + 3\text{ days}$).
+- **Duplicate Prevention:** 
+  1. **Database constraint:** Unique index `@Unique(['subscriptionId', 'targetBillingDate'])` on the `reminder_history` table.
+  2. **Application query check:** Prior to email dispatch, queries `reminder_history` for `(subscriptionId, targetBillingDate)`. If an entry exists, the reminder is skipped.
+- **Fail-Safe Dispatch:** If external email delivery fails, the error message is recorded in `reminder_history` with status `FAILED` and logged without crashing the scheduler.
+- **Reminder History Endpoints:**
+  - `GET /reminders`: View all reminder history for the authenticated user's subscriptions.
+  - `GET /subscriptions/:id/reminders`: View reminder history for a specific subscription.
+
+---
+
+### Exercise 3: CSV Subscription Import
+
+Bulk import subscriptions from a CSV file with line-level validation and error reporting.
+
+- **Endpoint:** `POST /subscriptions/import`
+- **Method:** `POST`
+- **Content-Type:** `multipart/form-data`
+- **File Field Name:** `file`
+- **File Validation:** Accepts only `.csv` files (non-CSV files return `400 Bad Request`).
+- **Required CSV Header:** `name,amount,billingDate,billingCycle`
+
+#### Example CSV File
+```csv
+name,amount,billingDate,billingCycle
+Netflix,15.99,2026-01-01,MONTHLY
+Spotify,-5.00,2026-02-01,MONTHLY
+AWS,100.00,2026-03-01,YEARLY
+Domain,20.00,2026-04-01,WEEKLY
+GitHub,4.00,2026-05-01,MONTHLY
+```
+
+#### Curl Command
+```bash
+curl -X POST http://localhost:6500/subscriptions/import \
+  -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
+  -F "file=@subscriptions.csv"
+```
+
+#### Response Summary
+```json
+{
+  "totalRows": 5,
+  "imported": 3,
+  "rejected": 2,
+  "errors": [
+    {
+      "row": 3,
+      "message": "Amount must be greater than zero"
+    },
+    {
+      "row": 5,
+      "message": "Invalid billing cycle"
+    }
+  ]
+}
+```
+
+---
+
+## Testing the Scheduled Cron Job (Immediate Execution)
+
+To verify the automated payment reminder scanner without waiting for the scheduled 09:00 AM daily trigger, a dedicated manual trigger endpoint is provided:
+
+### Trigger Endpoint
+- **URL:** `POST /reminders/trigger`
+- **Access:** Public (for testing and grading evaluation)
+- **Optional Parameter:** `?referenceDate=YYYY-MM-DD` (enables time-travel testing against any reference date)
+
+### How to Test
+
+#### 1. Trigger scan using current system date
+```bash
+curl -X POST http://localhost:6500/reminders/trigger
+```
+
+#### 2. Trigger scan with time-travel date
+```bash
+curl -X POST "http://localhost:6500/reminders/trigger?referenceDate=2026-10-15"
+```
+
+#### Sample Trigger Response
+```json
+{
+  "message": "Payment reminder scan triggered successfully",
+  "scanned": 10,
+  "eligible": 2,
+  "sent": 2,
+  "skipped": 0,
+  "failed": 0,
+  "results": [
+    {
+      "subscriptionId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "subscriptionName": "Netflix 4K",
+      "targetBillingDate": "2026-10-16",
+      "status": "SUCCESS",
+      "recipientEmail": "user@example.com"
+    }
+  ]
+}
+```
+
+#### Verifying Duplicate Prevention
+Running the trigger request a second time for the same date will skip previously sent reminders:
+```bash
+curl -X POST "http://localhost:6500/reminders/trigger?referenceDate=2026-10-15"
+```
+```json
+{
+  "message": "Payment reminder scan triggered successfully",
+  "scanned": 10,
+  "eligible": 2,
+  "sent": 0,
+  "skipped": 2,
+  "failed": 0,
+  "results": [
+    {
+      "subscriptionId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "subscriptionName": "Netflix 4K",
+      "targetBillingDate": "2026-10-16",
+      "status": "SKIPPED",
+      "recipientEmail": "user@example.com",
+      "reason": "Reminder already exists for this billing date"
+    }
+  ]
+}
+```
+
+---
+
+## Error Handling & Validation
+
+- **Uniform Error Envelope:** All exceptions are formatted by `HttpExceptionFilter`:
+  ```json
+  {
+    "statusCode": 400,
+    "timestamp": "2026-10-14T17:08:51.268Z",
+    "path": "/subscriptions/import",
+    "method": "POST",
+    "message": "Only CSV files are accepted",
+    "error": "Bad Request"
+  }
+  ```
+- **Input Validation:** Every incoming request body and query parameter is validated using `class-validator` and `ValidationPipe` with `{ whitelist: true, transform: true }`.
+
+---
+
+## Database & Deployment
+
+### Production Database
+- Hosted on **Neon PostgreSQL** (serverless compute with SSL enforcement).
+- Migrations and schema synchronization manage table creations: `users`, `subscriptions`, and `reminder_history`.
+
+### Submission Cleanliness
+Per submission guidelines, all test scripts, test data, and migration files are excluded from git tracking via `.gitignore` to ensure a clean source code submission containing only essential application files.

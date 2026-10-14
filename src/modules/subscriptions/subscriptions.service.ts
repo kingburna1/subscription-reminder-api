@@ -12,12 +12,15 @@ import { QuerySubscriptionDto } from './dto/query-subscription.dto.js';
 import { SubscriptionResponseDto } from './dto/subscription-response.dto.js';
 import { BillingCycle } from './enums/billing-cycle.enum.js';
 import { SubscriptionStatus } from './enums/subscription-status.enum.js';
+import { CsvParserService } from './csv-parser.service.js';
+import { CsvImportResponseDto } from './dto/csv-import-response.dto.js';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(
     @InjectRepository(Subscription)
     private readonly subscriptionRepository: Repository<Subscription>,
+    private readonly csvParserService: CsvParserService,
   ) {}
 
   /**
@@ -168,6 +171,55 @@ export class SubscriptionsService {
     return {
       message: 'Subscription successfully deleted',
       id,
+    };
+  }
+
+  /**
+   * Part 2, Exercise 3: CSV Subscription Import
+   *
+   * Parses, validates, and imports subscriptions from an uploaded CSV file.
+   * Skips invalid rows and reports their line numbers and error messages.
+   * Saves valid rows to the database associated with the authenticated user.
+   *
+   * @param userId Authenticated user UUID
+   * @param buffer CSV file content buffer
+   */
+  async importFromCsv(
+    userId: string,
+    buffer: Buffer,
+  ): Promise<CsvImportResponseDto> {
+    const { totalRows, validRows, errors } =
+      this.csvParserService.parseSubscriptionsCsv(buffer);
+
+    let imported = 0;
+    for (const row of validRows) {
+      try {
+        const subscription = this.subscriptionRepository.create({
+          name: row.name,
+          amount: row.amount,
+          billingDate: row.billingDate,
+          billingCycle: row.billingCycle,
+          status: SubscriptionStatus.ACTIVE,
+          userId,
+        });
+        await this.subscriptionRepository.save(subscription);
+        imported++;
+      } catch (err: unknown) {
+        errors.push({
+          row: row.row,
+          message:
+            err instanceof Error ? err.message : 'Database insertion failed',
+        });
+      }
+    }
+
+    errors.sort((a, b) => a.row - b.row);
+
+    return {
+      totalRows,
+      imported,
+      rejected: errors.length,
+      errors,
     };
   }
 
