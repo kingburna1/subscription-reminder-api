@@ -62,13 +62,7 @@ async function bootstrap() {
 
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
 
-  // Mounted at /docs (primary) and /api/docs (alias)
-  SwaggerModule.setup('docs', app, swaggerDocument, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
-
+  // Mounted exclusively at /api/docs
   SwaggerModule.setup('api/docs', app, swaggerDocument, {
     swaggerOptions: {
       persistAuthorization: true,
@@ -77,6 +71,6 @@ async function bootstrap() {
 
   await app.listen(port);
   Logger.log(`Application is running in [${nodeEnv}] mode on port ${port}`, 'Bootstrap');
-  Logger.log(`Swagger documentation available at http://localhost:${port}/docs (Basic Auth Protected)`, 'Bootstrap');
+  Logger.log(`Swagger documentation available at http://localhost:${port}/api/docs (Basic Auth Protected)`, 'Bootstrap');
 }
 await bootstrap();

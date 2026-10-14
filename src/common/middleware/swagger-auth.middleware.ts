@@ -12,9 +12,7 @@ export function createSwaggerAuthMiddleware(options: SwaggerAuthOptions) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const path = req.path || req.url || '';
     const isSwaggerRoute =
-      path.startsWith('/docs') ||
       path.startsWith('/api/docs') ||
-      path === '/docs' ||
       path === '/api/docs';
 
     if (!isSwaggerRoute) {
